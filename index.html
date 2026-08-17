@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="description" content="Interactive 3D Rubik's Cube with intuitive face-dragging, automated WCA scrambler, step-by-step solver, speedcubing timer, and audio effects.">
+  <title>NexusCube 3D | Interactive Rubik's Cube & Solver</title>
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- Three.js from CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="theme-classic bg-studio">
+
+  <!-- 3D Canvas Container -->
+  <div id="canvas-container"></div>
+
+  <!-- Main Application Wrapper -->
+  <div id="app">
+    
+    <!-- Top Header Navigation Bar -->
+    <header class="glass-panel top-bar">
+      <div class="brand">
+        <div class="brand-icon">
+          <div class="cube-icon-3d">
+            <span class="face face-u"></span>
+            <span class="face face-f"></span>
+            <span class="face face-r"></span>
+          </div>
+        </div>
+        <div class="brand-text">
+          <h1>NexusCube <span class="version-badge">3D</span></h1>
+          <span class="sub-title">Interactive Rubik's Solver & Trainer</span>
+        </div>
+      </div>
+
+      <!-- Scramble Notation Banner -->
+      <div class="scramble-display-container">
+        <div class="scramble-badge"><i data-lucide="shuffle"></i> SCRAMBLE</div>
+        <div id="scramble-text" class="scramble-text" title="Click to copy scramble">Ready to scramble...</div>
+        <button id="btn-copy-scramble" class="icon-btn-sm" title="Copy Scramble">
+          <i data-lucide="copy"></i>
+        </button>
+      </div>
+
+      <!-- Main Action Buttons & Toggles -->
+      <div class="top-actions">
+        <button id="btn-mix" class="btn btn-primary btn-glow" title="Mix up the Rubik's Cube with a WCA scramble">
+          <i data-lucide="shuffle"></i>
+          <span>Scramble</span>
+        </button>
+
+        <button id="btn-solve" class="btn btn-accent btn-glow" title="Solve the Rubik's Cube">
+          <i data-lucide="wand-2"></i>
+          <span>Solve Cube</span>
+        </button>
+
+        <div class="action-divider"></div>
+
+        <button id="btn-toggle-timer" class="icon-btn" title="Toggle Speedcubing Timer (Spacebar)">
+          <i data-lucide="timer"></i>
+        </button>
+
+        <button id="btn-toggle-sound" class="icon-btn" title="Toggle Sound Effects">
+          <i data-lucide="volume-2"></i>
+        </button>
+
+        <button id="btn-theme" class="icon-btn" title="Change Theme & Appearance">
+          <i data-lucide="palette"></i>
+        </button>
+
+        <button id="btn-help" class="icon-btn" title="Controls & Shortcuts Guide">
+          <i data-lucide="help-circle"></i>
+        </button>
+      </div>
+    </header>
+
+    <!-- Speedcubing Timer Widget (CS-Timer Style Overlay) -->
+    <div id="timer-panel" class="timer-panel glass-panel hidden">
+      <div class="timer-header">
+        <span class="timer-mode-badge"><i data-lucide="zap"></i> WCA SPEEDCUBING TIMER</span>
+        <button id="btn-close-timer" class="icon-btn-xs"><i data-lucide="x"></i></button>
+      </div>
+      <div class="timer-main">
+        <div id="timer-inspection" class="timer-inspection hidden">INSPECTION: <span id="inspection-val">15</span>s</div>
+        <div id="timer-display" class="timer-display">00:00.00</div>
+        <div class="timer-status-hint" id="timer-hint">Hold <kbd>Space</kbd> or touch to arm timer</div>
+      </div>
+      <div class="timer-stats">
+        <div class="stat-box">
+          <span class="stat-label">Best (PB)</span>
+          <span id="stat-pb" class="stat-value">--:--.--</span>
+        </div>
+        <div class="stat-box">
+          <span class="stat-label">Moves</span>
+          <span id="stat-moves" class="stat-value">0</span>
+        </div>
+        <div class="stat-box">
+          <span class="stat-label">TPS</span>
+          <span id="stat-tps" class="stat-value">0.0</span>
+        </div>
+        <div class="stat-box">
+          <span class="stat-label">Ao5</span>
+          <span id="stat-ao5" class="stat-value">--:--.--</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Solver Assistant Timeline Player (Appears when solving) -->
+    <div id="solver-assistant" class="solver-assistant glass-panel hidden">
+      <div class="solver-header">
+        <div class="solver-title-group">
+          <div class="solver-badge"><i data-lucide="cpu"></i> AI SOLVER</div>
+          <h3 id="solver-step-title">Computing Solution...</h3>
+        </div>
+        <div class="solver-header-actions">
+          <span id="solver-move-counter" class="mono-badge">0 / 0</span>
+          <button id="btn-close-solver" class="icon-btn-xs" title="Exit Solver Mode"><i data-lucide="x"></i></button>
+        </div>
+      </div>
+
+      <!-- Step Description / Teaching Guide -->
+      <div id="solver-step-desc" class="solver-step-desc">
+        Analyzing cube facelets and planning optimal step-by-step algorithms...
+      </div>
+
+      <!-- Solution Moves Timeline -->
+      <div id="solution-timeline" class="solution-timeline">
+        <!-- Move pills dynamically injected here -->
+      </div>
+
+      <!-- Solver Playback Controls -->
+      <div class="solver-controls">
+        <button id="btn-solver-prev" class="btn btn-secondary btn-sm" title="Previous Move">
+          <i data-lucide="skip-back"></i>
+          <span>Prev</span>
+        </button>
+
+        <button id="btn-solver-play" class="btn btn-primary btn-sm" title="Play / Pause Auto-Solve">
+          <i data-lucide="play" id="solver-play-icon"></i>
+          <span id="solver-play-label">Play</span>
+        </button>
+
+        <button id="btn-solver-next" class="btn btn-secondary btn-sm" title="Next Move">
+          <span>Next</span>
+          <i data-lucide="skip-forward"></i>
+        </button>
+
+        <button id="btn-solver-fast" class="btn btn-accent btn-sm" title="Solve All Instantly">
+          <i data-lucide="fast-forward"></i>
+          <span>Auto Finish</span>
+        </button>
+
+        <div class="speed-control">
+          <span class="speed-label"><i data-lucide="gauge"></i> Speed:</span>
+          <input type="range" id="solver-speed" min="100" max="800" step="50" value="350">
+          <span id="solver-speed-val" class="mono-text">350ms</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Gesture Hint Overlay (Drag stickers to rotate) -->
+    <div id="gesture-hint" class="gesture-hint">
+      <div class="gesture-pill">
+        <i data-lucide="mouse-pointer-click"></i>
+        <span>Drag any face to turn layer &bull; Drag background to orbit</span>
+      </div>
+    </div>
+
+    <!-- Floating Quick Action / View Controls (Left Sidebar) -->
+    <div class="view-controls-floating glass-panel">
+      <span class="floating-label">CAMERA</span>
+      <button class="icon-btn-sm" id="cam-front" title="Front View (F)"><i data-lucide="box"></i> Front</button>
+      <button class="icon-btn-sm" id="cam-top" title="Top View (U)"><i data-lucide="arrow-up-circle"></i> Top</button>
+      <button class="icon-btn-sm" id="cam-right" title="Right View (R)"><i data-lucide="arrow-right-circle"></i> Right</button>
+      <button class="icon-btn-sm" id="cam-iso" title="Isometric Reset (Space/R)"><i data-lucide="rotate-ccw"></i> Reset</button>
+      <div class="control-divider"></div>
+      <button class="icon-btn-sm" id="btn-reset-cube" title="Reset to Solved State"><i data-lucide="refresh-cw"></i> Reset Cube</button>
+      <button class="icon-btn-sm" id="btn-undo-move" title="Undo Last Move (Ctrl+Z)"><i data-lucide="undo-2"></i> Undo</button>
+    </div>
+
+    <!-- Bottom Manual Controls HUD -->
+    <footer class="glass-panel bottom-bar">
+      <!-- Section: Standard Face Turns (Clockwise) -->
+      <div class="notation-group">
+        <div class="group-title">CLOCKWISE TURNS</div>
+        <div class="button-row">
+          <button class="move-btn face-u" data-move="U" title="Turn Up face clockwise [U]">U</button>
+          <button class="move-btn face-d" data-move="D" title="Turn Down face clockwise [D]">D</button>
+          <button class="move-btn face-l" data-move="L" title="Turn Left face clockwise [L]">L</button>
+          <button class="move-btn face-r" data-move="R" title="Turn Right face clockwise [R]">R</button>
+          <button class="move-btn face-f" data-move="F" title="Turn Front face clockwise [F]">F</button>
+          <button class="move-btn face-b" data-move="B" title="Turn Back face clockwise [B]">B</button>
+        </div>
+      </div>
+
+      <!-- Section: Standard Face Turns (Counter-Clockwise / Primes) -->
+      <div class="notation-group">
+        <div class="group-title">COUNTER-CLOCKWISE (PRIME)</div>
+        <div class="button-row">
+          <button class="move-btn prime-btn" data-move="U'" title="Turn Up face counter-clockwise [Shift+U]">U'</button>
+          <button class="move-btn prime-btn" data-move="D'" title="Turn Down face counter-clockwise [Shift+D]">D'</button>
+          <button class="move-btn prime-btn" data-move="L'" title="Turn Left face counter-clockwise [Shift+L]">L'</button>
+          <button class="move-btn prime-btn" data-move="R'" title="Turn Right face counter-clockwise [Shift+R]">R'</button>
+          <button class="move-btn prime-btn" data-move="F'" title="Turn Front face counter-clockwise [Shift+F]">F'</button>
+          <button class="move-btn prime-btn" data-move="B'" title="Turn Back face counter-clockwise [Shift+B]">B'</button>
+        </div>
+      </div>
+
+      <!-- Section: Slices & Cube Rotations -->
+      <div class="notation-group extra-moves">
+        <div class="group-title">SLICES & AXES</div>
+        <div class="button-row">
+          <button class="move-btn slice-btn" data-move="M" title="Middle slice [M]">M</button>
+          <button class="move-btn slice-btn" data-move="E" title="Equatorial slice [E]">E</button>
+          <button class="move-btn slice-btn" data-move="S" title="Standing slice [S]">S</button>
+          <button class="move-btn rot-btn" data-move="x" title="Rotate Cube on X [X]">x</button>
+          <button class="move-btn rot-btn" data-move="y" title="Rotate Cube on Y [Y]">y</button>
+          <button class="move-btn rot-btn" data-move="z" title="Rotate Cube on Z [Z]">z</button>
+        </div>
+      </div>
+
+      <!-- Move History Summary -->
+      <div class="move-history-dock">
+        <div class="history-label">MOVE HISTORY (<span id="move-count-badge">0</span>)</div>
+        <div id="move-history-list" class="history-list">
+          <span class="history-empty">No moves yet</span>
+        </div>
+      </div>
+    </footer>
+
+    <!-- Theme Selection Modal -->
+    <div id="modal-theme" class="modal-backdrop hidden">
+      <div class="modal-dialog glass-panel">
+        <div class="modal-header">
+          <div class="modal-title"><i data-lucide="palette"></i> Cube Aesthetics & Styles</div>
+          <button class="icon-btn-xs btn-close-modal"><i data-lucide="x"></i></button>
+        </div>
+        <div class="modal-body">
+          <h4 class="theme-section-title">Cube Colorway</h4>
+          <div class="theme-grid">
+            <button class="theme-card active" data-theme="classic">
+              <div class="theme-preview classic-preview">
+                <span></span><span></span><span></span><span></span>
+              </div>
+              <div class="theme-name">Classic WCA</div>
+              <div class="theme-desc">Official competition high-contrast colors</div>
+            </button>
+            <button class="theme-card" data-theme="neon">
+              <div class="theme-preview neon-preview">
+                <span></span><span></span><span></span><span></span>
+              </div>
+              <div class="theme-name">Cyberpunk Neon</div>
+              <div class="theme-desc">Vibrant synthwave glowing pastels</div>
+            </button>
+            <button class="theme-card" data-theme="carbon">
+              <div class="theme-preview carbon-preview">
+                <span></span><span></span><span></span><span></span>
+              </div>
+              <div class="theme-name">Carbon & Metallic</div>
+              <div class="theme-desc">Deep carbon fiber with brushed metallic</div>
+            </button>
+            <button class="theme-card" data-theme="pastel">
+              <div class="theme-preview pastel-preview">
+                <span></span><span></span><span></span><span></span>
+              </div>
+              <div class="theme-name">Pastel Dream</div>
+              <div class="theme-desc">Soft soothing minimalist tones</div>
+            </button>
+          </div>
+
+          <h4 class="theme-section-title" style="margin-top: 1.25rem;">Environment Atmosphere</h4>
+          <div class="bg-theme-grid">
+            <button class="bg-theme-btn active" data-bg="bg-studio"><i data-lucide="sun"></i> Studio Dark</button>
+            <button class="bg-theme-btn" data-bg="bg-nebula"><i data-lucide="sparkles"></i> Deep Space</button>
+            <button class="bg-theme-btn" data-bg="bg-cyber"><i data-lucide="grid"></i> Cyber Grid</button>
+            <button class="bg-theme-btn" data-bg="bg-minimal"><i data-lucide="moon"></i> Pure Obsidian</button>
+          </div>
+
+          <h4 class="theme-section-title" style="margin-top: 1.25rem;">Animation Speed</h4>
+          <div class="speed-slider-group">
+            <div class="slider-labels">
+              <span>Fast (150ms)</span>
+              <span>Default (280ms)</span>
+              <span>Smooth (450ms)</span>
+            </div>
+            <input type="range" id="anim-speed-slider" min="100" max="500" step="20" value="280">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Help & Keyboard Shortcuts Modal -->
+    <div id="modal-help" class="modal-backdrop hidden">
+      <div class="modal-dialog glass-panel">
+        <div class="modal-header">
+          <div class="modal-title"><i data-lucide="help-circle"></i> Guide & Keyboard Shortcuts</div>
+          <button class="icon-btn-xs btn-close-modal"><i data-lucide="x"></i></button>
+        </div>
+        <div class="modal-body help-content">
+          <div class="help-section">
+            <h4><i data-lucide="mouse-pointer"></i> 3D Mouse & Touch Gestures</h4>
+            <ul>
+              <li><strong>Turn Cube Layer:</strong> Click and drag on any colored sticker in the direction you wish to turn.</li>
+              <li><strong>Orbit Camera:</strong> Click and drag on empty space around the cube, or use Right-Click drag.</li>
+              <li><strong>Zoom:</strong> Mouse scroll wheel or two-finger pinch.</li>
+            </ul>
+          </div>
+
+          <div class="help-section">
+            <h4><i data-lucide="keyboard"></i> Keyboard Shortcuts (Singmaster Notation)</h4>
+            <div class="shortcuts-grid">
+              <div class="shortcut-item"><kbd>U</kbd> / <kbd>Shift+U</kbd> <span>Up Face (Clockwise / Prime)</span></div>
+              <div class="shortcut-item"><kbd>D</kbd> / <kbd>Shift+D</kbd> <span>Down Face</span></div>
+              <div class="shortcut-item"><kbd>L</kbd> / <kbd>Shift+L</kbd> <span>Left Face</span></div>
+              <div class="shortcut-item"><kbd>R</kbd> / <kbd>Shift+R</kbd> <span>Right Face</span></div>
+              <div class="shortcut-item"><kbd>F</kbd> / <kbd>Shift+F</kbd> <span>Front Face</span></div>
+              <div class="shortcut-item"><kbd>B</kbd> / <kbd>Shift+B</kbd> <span>Back Face</span></div>
+              <div class="shortcut-item"><kbd>M</kbd>, <kbd>E</kbd>, <kbd>S</kbd> <span>Slice Turns</span></div>
+              <div class="shortcut-item"><kbd>X</kbd>, <kbd>Y</kbd>, <kbd>Z</kbd> <span>Whole Cube Rotations</span></div>
+              <div class="shortcut-item"><kbd>Space</kbd> <span>Arm & Start Speedcubing Timer</span></div>
+              <div class="shortcut-item"><kbd>Ctrl+Z</kbd> <span>Undo Last Move</span></div>
+            </div>
+          </div>
+
+          <div class="help-section">
+            <h4><i data-lucide="wand-2"></i> How Scramble & Solve Works</h4>
+            <p>Clicking <strong>Scramble</strong> executes a verified WCA tournament algorithm. Clicking <strong>Solve Cube</strong> analyzes the current state and gives you both an instant automated solve or a step-by-step interactive player to learn the algorithms!</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Solved Congratulations Toast / Modal -->
+    <div id="solved-banner" class="solved-banner glass-panel hidden">
+      <div class="solved-icon"><i data-lucide="award"></i></div>
+      <div class="solved-text">
+        <h3>PUZZLE SOLVED!</h3>
+        <p id="solved-time-stat">Great job! All faces aligned.</p>
+      </div>
+      <button id="btn-close-solved" class="btn btn-primary btn-sm">Awesome</button>
+    </div>
+
+  </div>
+
+  <!-- Scripts -->
+  <script src="js/audio.js"></script>
+  <script src="js/themes.js"></script>
+  <script src="js/notation.js"></script>
+  <script src="js/scrambler.js"></script>
+  <script src="js/solver.js"></script>
+  <script src="js/gestures.js"></script>
+  <script src="js/timer.js"></script>
+  <script src="js/cube3d.js"></script>
+  <script src="js/app.js"></script>
+
+  <script>
+    // Initialize Lucide icons
+    document.addEventListener('DOMContentLoaded', () => {
+      if (window.lucide) {
+        window.lucide.createIcons();
+      }
+    });
+  </script>
+</body>
+</html>
