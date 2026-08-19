@@ -158,10 +158,10 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // 9. Camera Preset Angle Controls
-  if (camFront) camFront.addEventListener('click', () => cube3d.setCameraPreset(0, Math.PI / 2, 9.2));
-  if (camTop) camTop.addEventListener('click', () => cube3d.setCameraPreset(0, 0.05, 9.2));
-  if (camRight) camRight.addEventListener('click', () => cube3d.setCameraPreset(-Math.PI / 2, Math.PI / 2, 9.2));
-  if (camIso) camIso.addEventListener('click', () => cube3d.setCameraPreset(0.65, 0.45, 9.2));
+  if (camFront) camFront.addEventListener('click', () => cube3d.setCameraPreset(0, Math.PI / 2));
+  if (camTop) camTop.addEventListener('click', () => cube3d.setCameraPreset(0, 0.05));
+  if (camRight) camRight.addEventListener('click', () => cube3d.setCameraPreset(-Math.PI / 2, Math.PI / 2));
+  if (camIso) camIso.addEventListener('click', () => cube3d.setCameraPreset(0.65, 0.45));
 
   // Reset Cube
   if (btnResetCube) {

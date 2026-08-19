@@ -28,14 +28,32 @@ class Cube3D {
     // Camera Orbit State
     this.isOrbiting = false;
     this.prevPointerPos = { x: 0, y: 0 };
-    this.targetCameraRot = { theta: 0.65, phi: 0.45, radius: 9.2 }; // spherical coords
-    this.currentCameraRot = { theta: 0.65, phi: 0.45, radius: 9.2 };
+    const initialRadius = this.getBaseRadius();
+    this.targetCameraRot = { theta: 0.65, phi: 0.45, radius: initialRadius }; // spherical coords
+    this.currentCameraRot = { theta: 0.65, phi: 0.45, radius: initialRadius };
 
     // Callbacks
     this.onMoveComplete = null;
     this.onSolved = null;
 
     this.init();
+  }
+
+  getBaseRadius() {
+    const width = (this.container && this.container.clientWidth) ? this.container.clientWidth : window.innerWidth;
+    const height = (this.container && this.container.clientHeight) ? this.container.clientHeight : window.innerHeight;
+    const aspect = width / (height || 1);
+
+    if (aspect < 0.7) {
+      // Mobile portrait (phones) - reduced significantly for clean visibility & margin
+      return Math.max(14.0, Math.min(17.5, 7.2 / aspect));
+    } else if (aspect < 1.15 || width < 768) {
+      // Small screens / tablets / mobile landscape
+      return 12.2;
+    } else {
+      // Desktop - reduced a bit from original 9.2 to 10.8
+      return 10.8;
+    }
   }
 
   init() {
@@ -539,21 +557,51 @@ class Cube3D {
       this.isOrbiting = false;
     });
 
+    // Touch pinch to zoom support
+    let initialPinchDist = null;
+    let initialPinchRadius = null;
+
+    dom.addEventListener('touchstart', (e) => {
+      if (e.touches.length === 2) {
+        this.isOrbiting = false;
+        const dx = e.touches[0].clientX - e.touches[1].clientX;
+        const dy = e.touches[0].clientY - e.touches[1].clientY;
+        initialPinchDist = Math.hypot(dx, dy);
+        initialPinchRadius = this.targetCameraRot.radius;
+      }
+    }, { passive: true });
+
+    dom.addEventListener('touchmove', (e) => {
+      if (e.touches.length === 2 && initialPinchDist) {
+        const dx = e.touches[0].clientX - e.touches[1].clientX;
+        const dy = e.touches[0].clientY - e.touches[1].clientY;
+        const dist = Math.hypot(dx, dy);
+        const factor = initialPinchDist / Math.max(10, dist);
+        this.targetCameraRot.radius = Math.max(6.0, Math.min(26.0, initialPinchRadius * factor));
+      }
+    }, { passive: true });
+
+    dom.addEventListener('touchend', (e) => {
+      if (e.touches.length < 2) {
+        initialPinchDist = null;
+      }
+    });
+
     // Zoom on wheel
     dom.addEventListener('wheel', (e) => {
       e.preventDefault();
       const zoomSpeed = 0.002;
-      this.targetCameraRot.radius = Math.max(6.0, Math.min(16.0, this.targetCameraRot.radius + e.deltaY * zoomSpeed));
+      this.targetCameraRot.radius = Math.max(6.0, Math.min(26.0, this.targetCameraRot.radius + e.deltaY * zoomSpeed));
     }, { passive: false });
 
     // Context menu disable on 3D canvas
     dom.addEventListener('contextmenu', (e) => e.preventDefault());
   }
 
-  setCameraPreset(theta, phi, radius = 9.2) {
+  setCameraPreset(theta, phi, radius = null) {
     this.targetCameraRot.theta = theta;
     this.targetCameraRot.phi = phi;
-    this.targetCameraRot.radius = radius;
+    this.targetCameraRot.radius = (radius !== null && radius !== undefined) ? radius : this.getBaseRadius();
   }
 
   updateCameraPosition() {
@@ -577,6 +625,7 @@ class Cube3D {
     this.camera.aspect = width / height;
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(width, height);
+    this.targetCameraRot.radius = this.getBaseRadius();
   }
 
   animate() {
